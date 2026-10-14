@@ -128,7 +128,7 @@ footer{margin-top:3rem; color:var(--muted); font-size:.85rem}
 
 <section class="step">
   <h3><span class="num">Step 5.</span> Dry run</h3>
-  <p>Before any call, the notebook counts what the next steps would ask for and checks it against the cap. This step makes zero calls. A cached answer costs nothing, so a replay shows zero live calls.</p>
+  <p>Before any call, the notebook counts what the next steps would ask for and checks it against the cap. This step makes zero calls. With <code>LIVE_CALLS = False</code> a cache miss is skipped, never sent, so the dry run shows zero live calls.</p>
 </section>
 
 <section class="step">
@@ -166,9 +166,9 @@ footer{margin-top:3rem; color:var(--muted); font-size:.85rem}
 
 <div class="box">
   <h2>Cost</h2>
-  <p>The sample frames are free. Your own images are not.</p>
+  <p>A live run costs API calls, on the sample frames and on your own images.</p>
   <ul>
-    <li><strong>Sample frames:</strong> free through the cache. All 1,012 cached answers for the 3 sample frames are replayable from <code>samples/decisions_cache.json</code>. No key, same result every time.</li>
+    <li><strong>Sample frames:</strong> <code>samples/decisions_cache.json</code> holds 1,012 answers from earlier live runs, but cache keys include the kit images, which depend on the frame set, so a fresh run mostly misses. With <code>LIVE_CALLS = False</code> the misses are skipped and boxes come out <code>uncertain</code> (trial run: 149 lookups, 0 hits, 70 uncertain, 0 team labels). To reproduce the published labels, set <code>OPENAI_API_KEY</code>, <code>LIVE_CALLS = True</code> and <code>MAX_CALLS</code> to about 200 (about 150 calls projected).</li>
     <li><strong>Your own images:</strong> new crops, so new calls.</li>
     <li><strong>Dry run first:</strong> set <code>LIVE_CALLS = False</code> to count the calls. Nothing is sent.</li>
     <li><strong>Going live:</strong> add <code>OPENAI_API_KEY</code> to <code>.env</code>, then set <code>LIVE_CALLS = True</code>.</li>

@@ -53,7 +53,7 @@ The labeling is the slow part, and it repeats whenever kits, camera or footage c
 
 YOLO's own labels are metadata only. They never become a class. Decisions is the classifier, and it must answer with one of the four labels. When it could not settle, the row carries `forced=True`.
 
-**What it costs instead of labeling time:** API calls. Every call is cached, counted and capped (see [Cost](#cost)). The shipped cache holds 1,012 saved answers from several runs on the sample frames, all replayable. The Decisions model is `gpt-6-luna` (`DECISIONS_MODEL` in `src/config_io.py`). We have not measured the spend of those runs. We have not measured the labeling time or cost of a trained detector, so this repo makes no claim about how they compare in dollars or hours.
+**What it costs instead of labeling time:** API calls. Every call is cached, counted and capped (see [Cost](#cost)). The shipped cache holds 1,012 saved answers from several earlier runs on the sample frames. They do not replay on a fresh run (see [Cost](#cost)). The Decisions model is `gpt-6-luna` (`DECISIONS_MODEL` in `src/config_io.py`). We have not measured the spend of those runs. We have not measured the labeling time or cost of a trained detector, so this repo makes no claim about how they compare in dollars or hours.
 
 ## Install
 
@@ -81,15 +81,15 @@ The camera is fixed, so the scoreboard/minimap (HUD) step is switched off here (
 jupyter lab notebooks/zero_shot_football_vision.ipynb
 ```
 
-Run all cells. No API key is needed: the answers for the 3 sample frames in `samples/frames/` are replayed from `samples/decisions_cache.json`. The clip-level live vote is off by default (`LIVE_CLIP_CALLS = False`), and the ball window search was not run for the shipped cache, so those two steps are dry runs.
+Pick the Jupyter kernel that uses Python 3.12 (an older default `python3` kernel may fail on f-strings). Run all cells. The default dry run executes without any key, but it does **not** reproduce the published labels: the saved answers in `samples/decisions_cache.json` mostly miss on a fresh run, because cache keys include the kit images, which depend on the frame set. A trial run of the 3 shipped frames gave 149 lookups, 0 cache hits, 70 `uncertain` boxes and 0 team labels. To reproduce the labels you need your own key: set `OPENAI_API_KEY`, set `LIVE_CALLS = True` and raise `MAX_CALLS` to about 200 (the notebook projects about 150 calls for the 3 frames; check its dry-run projection first). The saved results are in `docs/img/` (images) and `samples/results/` (CSVs). The clip-level live vote is off by default (`LIVE_CLIP_CALLS = False`), and the ball window search was not run for the shipped cache, so those two steps are dry runs.
 
 ## Cost
 
-The sample frames are free. Your own images are not.
+A live run costs API calls, on the sample frames and on your own images.
 
-Every Decisions answer is saved in `samples/decisions_cache.json`. The same question later is answered from that file: no call, no cost.
+Every Decisions answer is saved in a cache file. The same question later is answered from that file: no call, no cost.
 
-- **Sample frames:** already cached. No key, no cost, same result every time.
+- **Sample frames:** the shipped cache (1,012 answers from earlier live runs) mostly misses on a fresh run, because cache keys include the kit images, which depend on the frame set. With `LIVE_CALLS = False` the misses are skipped and boxes come out `uncertain`. To reproduce the published labels, set `OPENAI_API_KEY`, `LIVE_CALLS = True` and `MAX_CALLS` to about 200 (about 150 calls projected).
 - **Your own images:** new crops, so new calls. Put PNGs named `frame_01_src950.png`, `frame_02_src1250.png`, ... in `samples/frames/`. Run with `LIVE_CALLS = False` first to count the calls. Then copy `.env.sample` to `.env`, add `OPENAI_API_KEY`, and set `LIVE_CALLS = True`.
 - **Hard cap:** `MAX_CALLS` (default 70; raise it for a full 3-frame run, which needs a few hundred calls on new frames). The run stops at the cap.
 - **Re-runs:** new answers are saved to your own cache, so repeating the same images is free.
@@ -115,7 +115,7 @@ The step pictures are regenerated when you run the notebook. More detail: [`docs
 
 ## Results
 
-Three frames, 1280x720, cached run (no new calls). Counts are boxes kept after the pitch gate and class-aware NMS.
+Three frames, 1280x720, saved run. Counts are boxes kept after the pitch gate and class-aware NMS.
 
 | Frame | Source | Boxes | team_1 | team_2 | referee | Forced |
 |---|---|---|---|---|---|---|
@@ -177,7 +177,7 @@ If you use the footage, cite the SoccerTrack v2 dataset paper (arXiv:2508.01802)
 
 ## Contributing
 
-Issues are welcome. The notebook runs end to end from the shipped cache with no API key and no live calls, so you can reproduce the results before changing anything.
+Issues are welcome. The notebook's dry run executes end to end without an API key, but it does not reproduce the published labels. A live run needs your own key and about 150 calls for the 3 sample frames.
 
 ## License
 
