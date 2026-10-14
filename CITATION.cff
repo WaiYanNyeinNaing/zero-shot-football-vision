@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below. If you use the footage, also cite the SoccerTrack v2 paper (arXiv:2508.01802)."
+title: "Zero-shot football vision"
+type: software
+authors:
+  - family-names: "Nyein Naing"
+    given-names: "Wai Yan"
+    website: "https://github.com/WaiYanNyeinNaing"
+repository-code: "https://github.com/WaiYanNyeinNaing/zero-shot-football-vision"
+license: AGPL-3.0-only
+date-released: "2026-10-13"

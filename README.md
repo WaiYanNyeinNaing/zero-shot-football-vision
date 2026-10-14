@@ -161,6 +161,8 @@ docs/              step pictures and result pictures (img/), index.html explaine
 
 ## Citation
 
+To cite this repository, see `CITATION.cff` (Wai Yan Nyein Naing, https://github.com/WaiYanNyeinNaing).
+
 If you use the footage, cite the SoccerTrack v2 dataset paper (arXiv:2508.01802):
 
 ```bibtex
@@ -181,6 +183,6 @@ Issues are welcome. The notebook's dry run executes end to end without an API ke
 
 ## License
 
-Copyright (C) 2026 WaiYan.
+Copyright (C) 2026 Wai Yan Nyein Naing.
 
 The code is AGPL-3.0 (see `LICENSE`); Ultralytics is also AGPL-3.0. The licence covers the code only. The footage keeps its own licence (SoccerTrack v2, CC BY 4.0), which is separate from the code licence and needs the citation above.
