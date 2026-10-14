@@ -1,0 +1,38 @@
+{
+ "f1": {
+  "src_frame": 950,
+  "folder": "publish",
+  "boxes": 22,
+  "by_class": {
+   "team_1_player": 11,
+   "team_2_player": 10,
+   "referee": 1
+  },
+  "forced": 6,
+  "ball_removed": false
+ },
+ "f4": {
+  "src_frame": 3400,
+  "folder": "publish",
+  "boxes": 23,
+  "by_class": {
+   "team_1_player": 14,
+   "referee": 1,
+   "team_2_player": 8
+  },
+  "forced": 9,
+  "ball_removed": false
+ },
+ "f2": {
+  "src_frame": 1250,
+  "folder": "publish",
+  "boxes": 24,
+  "by_class": {
+   "team_1_player": 12,
+   "team_2_player": 10,
+   "referee": 2
+  },
+  "forced": 6,
+  "ball_removed": true
+ }
+}

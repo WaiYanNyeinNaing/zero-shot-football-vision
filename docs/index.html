@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zero-shot football vision</title>
+<meta name="description" content="Label a football frame as ball, referee, team_1_player or team_2_player with no training and no hand labels.">
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#fafaf7; --fg:#1d2320; --muted:#566159; --card:#ffffff; --line:#d9ddd6;
+  --accent:#17663b; --accent-bg:#e6f2ea; --warn-bg:#fdf3dc; --warn-line:#d9b650;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#121614; --fg:#e6eae7; --muted:#9aa59e; --card:#1a1f1c; --line:#2f3732;
+    --accent:#6fcf97; --accent-bg:#1b2c22; --warn-bg:#2b2410; --warn-line:#8a7324;
+  }
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-inline:max(16px,env(safe-area-inset-left));
+}
+main{max-width:46rem; margin:0 auto; padding-block:2rem 4rem}
+h1{font-size:2rem; line-height:1.2; margin:0 0 .5rem}
+h2{font-size:1.4rem; margin:2.5rem 0 .75rem; line-height:1.25}
+h3{font-size:1.1rem; margin:0 0 .4rem}
+p{margin:.5rem 0}
+code{font:.9em ui-monospace,Menlo,Consolas,monospace; background:var(--accent-bg); padding:.1em .35em; border-radius:4px; overflow-wrap:anywhere}
+a{color:var(--accent)}
+.lead{font-size:1.1rem; color:var(--muted)}
+.labels{display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; padding:0; list-style:none}
+.labels li{background:var(--accent-bg); color:var(--accent); border:1px solid var(--line); border-radius:999px; padding:.15rem .8rem; font:600 .9rem ui-monospace,Menlo,Consolas,monospace}
+
+/* flow */
+.flow{list-style:none; counter-reset:s; margin:1rem 0; padding:0; display:flex; flex-wrap:wrap; gap:.5rem 0}
+.flow li{counter-increment:s; position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.45rem .7rem; margin-right:1.6rem; font-size:.9rem; line-height:1.35}
+.flow li::before{content:counter(s)". "; color:var(--accent); font-weight:700}
+.flow li:not(:last-child)::after{content:"\2192"; position:absolute; right:-1.35rem; top:50%; transform:translateY(-50%); color:var(--muted)}
+.flow li small{display:block; color:var(--muted); font-size:.78rem}
+.flow li.api{border-color:var(--accent); background:var(--accent-bg)}
+.note{font-size:.9rem; color:var(--muted)}
+
+/* steps */
+.step{border-top:1px solid var(--line); padding-top:1.25rem; margin-top:1.75rem}
+.step .num{color:var(--accent); font-weight:700}
+.step img{display:block; width:100%; height:auto; border:1px solid var(--line); border-radius:8px; margin:.75rem 0}
+figcaption{font-size:.85rem; color:var(--muted)}
+figure{margin:0}
+
+/* boxes */
+.box{background:var(--warn-bg); border:1px solid var(--warn-line); border-radius:10px; padding:1rem 1.1rem; margin:1rem 0}
+.box h2{margin-top:0}
+.box ul{margin:.5rem 0; padding-left:1.2rem}
+.box li{margin:.35rem 0}
+
+.tablewrap{overflow-x:auto; margin:1rem 0}
+table{border-collapse:collapse; width:100%; min-width:30rem; background:var(--card)}
+th,td{border:1px solid var(--line); padding:.55rem .7rem; text-align:left; vertical-align:top}
+th{background:var(--accent-bg)}
+ul.limits{padding-left:1.2rem}
+ul.limits li{margin:.5rem 0}
+footer{margin-top:3rem; color:var(--muted); font-size:.85rem}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Zero-shot football vision</h1>
+<p class="lead">Label players in a football frame with no training and no hand labels.</p>
+
+<h2>The idea</h2>
+<p>A public YOLO model proposes regions and ByteTrack follows them over time. Neither was trained on our footage. The OpenAI Decisions API then judges each region and must answer with one of four labels. We train nothing and draw no labels by hand. Every answer is cached, counted and capped.</p>
+<ul class="labels"><li>ball</li><li>referee</li><li>team_1_player</li><li>team_2_player</li></ul>
+<p>YOLO's own labels are metadata only. They never become a class. Decisions is the classifier.</p>
+
+<figure>
+  <img src="img/counter.gif" alt="Each box passes through the Decisions API panel and updates the team_1, team_2 and referee counters" style="width:100%;height:auto;border:1px solid var(--line);border-radius:8px">
+  <figcaption>Counts per frame from the saved csv files. Three separate frames, not a tracked clip.</figcaption>
+</figure>
+
+
+<figure>
+  <img src="img/how_decisions_works.jpg" alt="Six boxes from frame f1 with the crop sent, the score for every option and the final label with its confidence" style="width:100%;height:auto;border:1px solid var(--line);border-radius:8px">
+  <figcaption>How a box becomes a label. Confidence is the model's own score, not a calibrated probability. Forced labels are marked.</figcaption>
+</figure>
+
+
+<h2>The flow</h2>
+<ol class="flow">
+  <li>Frames</li>
+  <li>HUD mask</li>
+  <li>YOLO proposals<small>pitch gate</small></li>
+  <li>Kit clusters</li>
+  <li class="api">Decisions<small>kits, boxes, forced four labels</small></li>
+  <li class="api">Ball search</li>
+  <li>Dedupe</li>
+  <li>Tracking</li>
+  <li>Export</li>
+</ol>
+<p class="note">Shaded boxes are the steps that call Decisions. The ball search also asks Decisions to confirm a tight box.</p>
+
+<h2>Step by step</h2>
+
+<section class="step">
+  <h3><span class="num">Step 1.</span> Three real frames</h3>
+  <p>Three 1280x720 windows are cut from a SoccerTrack v2 panorama and saved as lossless PNGs. The file name holds the source frame number, so the repo needs no big video.</p>
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 2.</span> Find and mask the HUD</h3>
+  <p>Broadcast-style footage has a scoreboard and minimap that hold many small white dots that look like balls. This footage comes from a fixed camera with no overlay, so the mask is switched off here (<code>HUD_MODE = "none"</code>); the picture shows an empty mask. HUD edges land on the same pixels in every frame, so we keep the edges that never move and turn them into rectangles. If the mask would cover more than 30% of the frame, it is thrown away.</p>
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 3.</span> YOLO proposes, the pitch filters</h3>
+  <p>YOLO is public and pretrained. We keep its boxes and ignore its opinions. A box stays only if its feet, the bottom-centre point, are on the pitch. The tolerance grows sideways and downward only, because growing it upward lets spectators in.</p>
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 4.</span> Kit colours, a guess only</h3>
+  <p>We take each box's torso, remove grass pixels, drop blurry crops and cluster the median colours with k-means. This gives clusters, not teams. Colour alone cannot tell a goalkeeper from a referee, so the clusters go to Decisions.</p>
+  <img src="img/04_kit_clusters.jpg" alt="One row of torso crops per colour cluster" loading="lazy">
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 5.</span> Dry run</h3>
+  <p>Before any call, the notebook counts what the next steps would ask for and checks it against the cap. This step makes zero calls. A cached answer costs nothing, so a replay shows zero live calls.</p>
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 6.</span> Decisions judges the kit clusters</h3>
+  <p>For each cluster we send a montage of its sharpest crops. We ask whether it is one kit, and whether it is an outfield team, goalkeeper, official or a mix. The two best outfield clusters become team_1_player and team_2_player, ordered by earliest appearance.</p>
+  <img src="img/06_kit_board.jpg" alt="Reference board of the two team kits" loading="lazy">
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 7.</span> Label every box, then force a choice</h3>
+  <p>Each request carries the team 1 reference, the team 2 reference and the crop. Boxes below the accept threshold stay uncertain and get a second pass with four labels and a bigger crop. Anything still undecided must pick one of the four labels, and the row is tagged <code>forced=True</code>.</p>
+  <img src="img/results/f1_labelled.jpg" alt="Frame f1 with team labels drawn on each box" loading="lazy">
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 8.</span> The ball</h3>
+  <p>The ball is about 5 pixels and white on green. We cover the pitch only with overlapping windows and ask Decisions whether a ball is present in each. Image processing, not the model, makes the tight box, and a separate question confirms it. Windows never reached are logged <code>unsearched</code>.</p>
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 9.</span> Remove duplicates</h3>
+  <p>Duplicate removal is class-aware. Two boxes on one player collapse into one, but a ball on top of a player survives. Thick box means tight and confirmed. Thin box with <code>?</code> means a ball is present but not localized. <code>*</code> marks a forced label.</p>
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 10.</span> Tracking across a clip</h3>
+  <p>A YOLO box has no memory. ByteTrack gives each person an id that persists across frames, so we can judge a track instead of every box. The notebook runs this on a 3 second clip with zero calls. A live per-track vote would use about three crops from different moments, and would split a track if the crops disagree.</p>
+  <img src="img/10_tracking.jpg" alt="Tracked boxes with persistent ids over a 3 second clip" loading="lazy">
+</section>
+
+<section class="step">
+  <h3><span class="num">Step 11.</span> Export</h3>
+  <p>The export keeps what you need to audit a claim later: frame ids, boxes in original pixels, decision type, class, confidence, uncertainty reasons, localization status and the call log.</p>
+</section>
+
+<div class="box">
+  <h2>Cost</h2>
+  <p>The sample frames are free. Your own images are not.</p>
+  <ul>
+    <li><strong>Sample frames:</strong> free through the cache. All 1,012 cached answers for the 3 sample frames are replayable from <code>samples/decisions_cache.json</code>. No key, same result every time.</li>
+    <li><strong>Your own images:</strong> new crops, so new calls.</li>
+    <li><strong>Dry run first:</strong> set <code>LIVE_CALLS = False</code> to count the calls. Nothing is sent.</li>
+    <li><strong>Going live:</strong> add <code>OPENAI_API_KEY</code> to <code>.env</code>, then set <code>LIVE_CALLS = True</code>.</li>
+    <li><strong>Hard cap:</strong> <code>MAX_CALLS</code> defaults to 70. The run stops at the cap. A full live run on three new frames needs a few hundred calls, so raise it deliberately.</li>
+    <li><strong>Re-runs:</strong> new answers are saved to your own cache, so repeating the same images is free.</li>
+  </ul>
+</div>
+
+<h2>Conventional route vs this</h2>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>Step</th><th>Conventional route</th><th>This repo</th></tr></thead>
+  <tbody>
+    <tr><td>Data</td><td>Collect footage</td><td>Use the footage you have</td></tr>
+    <tr><td>Labels</td><td>Draw boxes and class labels by hand</td><td>Propose regions with a public YOLO model</td></tr>
+    <tr><td>Model</td><td>Train or fine-tune a detector</td><td>Judge each region with Decisions</td></tr>
+    <tr><td>Fixing</td><td>Check, fix labels, repeat</td><td>Read the pictures, check forced rows</td></tr>
+    <tr><td>New kits, camera or footage</td><td>Label and retrain again</td><td>Run again; new images make new calls</td></tr>
+    <tr><td>What it costs</td><td>Labeling time</td><td>API calls, cached, counted and capped</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="note">We did not measure the labeling time or cost of a trained detector. This page makes no claim about how the two compare in dollars or hours.</p>
+
+<h2>What it does not do</h2>
+<ul class="limits">
+  <li>Confidence numbers are <strong>not probabilities</strong>. The thresholds are experimental.</li>
+  <li><code>team_1</code> / <code>team_2</code> are arbitrary visual groups (ordered by who appears first), not clubs or home/away.</li>
+  <li>Nothing is interpolated. A frame that was not searched is logged <code>unsearched</code>, not empty. Tracked ball frames are marked <code>tracked</code>, and are not confirmations.</li>
+  <li><strong>The ball was not found.</strong> It is about 5 px, and the 144-window search (3 frames x 48) never produced a box worth confirming on this footage. The one ball box in f2 was removed as false.</li>
+  <li><strong>Team labels are not measured.</strong> The dataset has no team ground truth. By eye, red reads reliably as team_1; cream players are sometimes pulled into team_1, and cream or dark outfield players are sometimes called referee.</li>
+  <li>Forced labels (21 of 69 published boxes) are guesses.</li>
+  <li>The tracking step is shown as a dry run. Its live vote (about 78 calls for the 3 s clip) was not run for this repo.</li>
+  <li>No pitch view, distance or speed. The panorama's lines are curved, so it needs the dataset's distortion maps, not a plain homography.</li>
+</ul>
+
+<footer>Footage: SoccerTrack v2 (CC BY 4.0). Code and notebook: see the repository README. License: AGPL-3.0. Ultralytics is also AGPL-3.0.</footer>
+
+</main>
+</body>
+</html>

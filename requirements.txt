@@ -1,0 +1,10 @@
+# Tested on Python 3.12 (numpy 2.x, torch 2.x, ultralytics 8.4, openai 3.x).
+# On Python 3.9 pin numpy==1.26.4 and opencv-python-headless==4.10.0.84 (torch 2.2 cannot load NumPy 2).
+numpy>=1.26
+opencv-python-headless>=4.10
+ultralytics>=8.3,<9
+lapx
+openai>=2.8
+matplotlib>=3.5
+jupyterlab>=4.0
+ipykernel>=6.0
